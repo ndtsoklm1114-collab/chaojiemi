@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>潮解密</title>
+<style>
+/* 淺色、留白、細線：主任 10/16 看過鼎淵的工具後要「有質感、像 Notion」。代號用各類不同的淡色標籤。 */
+:root{
+  --bg:#ffffff;--side:#f7f7f5;--text:#37352f;--muted:#787774;--faint:#9b9a97;
+  --line:rgba(55,53,47,.16);--line2:rgba(55,53,47,.09);--hover:rgba(55,53,47,.06);--sel:rgba(35,131,226,.14);
+  --blue:#2383e2;--blue-ink:#fff;--red:#e03e3e;--orange:#d9730d;--green:#448361;--yellow:#dfab01;
+  --brand:#f5c400;--brand-ink:#141518;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,"PingFang TC","Noto Sans TC","Helvetica Neue",sans-serif;display:grid;grid-template-columns:300px 1fr;overflow:hidden;-webkit-font-smoothing:antialiased}
+/* 只有操作區不給選字；預覽區要能圈字補遮，所以 body 不設 user-select:none（WebKit 設在祖先會讓圈選讀到空字串） */
+#side,#tabs,#summary,#foot,#pop,.pager{user-select:none;-webkit-user-select:none}
+.mono{font-family:"SF Mono",Menlo,monospace;font-size:12.5px}
+button{font:inherit;font-size:13px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:6px;padding:5px 12px;line-height:1.4;transition:background .12s,border-color .12s}
+button:hover:not(:disabled){background:var(--hover)}
+button.primary{background:var(--blue);border-color:var(--blue);color:var(--blue-ink);font-weight:600}
+button.primary:hover:not(:disabled){background:#1b74cc}
+button.quiet{border-color:transparent;color:var(--muted)}
+button.quiet:hover:not(:disabled){color:var(--text)}
+button.danger{color:var(--red);border-color:rgba(224,62,62,.35)}
+button.sm{font-size:12px;padding:2px 8px;border-radius:5px}
+button:disabled{opacity:.45;cursor:default}
+select{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:#fff;color:var(--text)}
+textarea{width:100%;background:#fff;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font:13px/1.55 -apple-system,"PingFang TC",sans-serif;resize:vertical;user-select:text;min-height:150px}
+textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px var(--sel)}
+textarea::placeholder{color:var(--faint)}
+a.lnk{color:var(--muted);cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px}
+a.lnk:hover{background:var(--hover);color:var(--text)}
+/* 左欄 */
+#side{background:var(--side);border-right:1px solid var(--line2);display:flex;flex-direction:column;min-height:0}
+#hd{padding:14px 16px 10px;display:flex;align-items:center;gap:10px}
+#hd .mark{width:26px;height:26px;border-radius:7px;background:var(--brand-ink);color:var(--brand);font-weight:800;font-size:15px;display:grid;place-items:center;letter-spacing:0}
+#hd .logo{font-weight:700;font-size:15px}
+#hd .sub{margin-left:auto;color:var(--muted);font-size:11.5px;display:flex;align-items:center;gap:5px}
+#hd .sub i{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block}
+.sec{padding:8px 16px 12px}
+.lbl{font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:4px;letter-spacing:.02em}
+.lbl .sp{flex:1}
+#drop{border:1.5px dashed var(--line);border-radius:8px;padding:16px 12px;text-align:center;color:var(--muted);font-size:13px;transition:.15s;background:#fff}
+#drop small{display:block;color:var(--faint);font-size:11.5px;margin-top:2px}
+#drop.over{border-color:var(--blue);color:var(--blue);background:var(--sel)}
+#files{flex:1;overflow:auto;min-height:60px;margin-top:8px}
+.file{display:grid;grid-template-columns:1fr auto;gap:0 8px;padding:7px 9px;border-radius:6px;cursor:pointer;border:1px solid transparent;margin-bottom:2px}
+.file:hover{background:var(--hover)}
+.file.on{background:#fff;border-color:var(--line2);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.file .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;font-size:13px}
+.file .s{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.file .s.img{color:var(--orange)}
+.file .s.err{color:var(--red)}
+.file .s.run{color:var(--blue)}
+.file .x{grid-column:2;grid-row:1;color:var(--faint);font-size:12px;padding:0 4px;border-radius:4px}
+.file .x:hover{color:var(--red);background:var(--hover)}
+.file .d{grid-column:1/3;font-size:11.5px;color:var(--muted);margin-top:1px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:12px;padding:2px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);cursor:pointer;background:#fff}
+.chip:hover{border-color:var(--text);color:var(--text)}
+#nlinfo{font-size:11.5px;color:var(--muted);margin-top:5px;min-height:16px}
+.ck{font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer}
+.ck input{margin:0}
+#bookinfo{font-size:11.5px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#nlinfo.err{color:var(--red)}
+#actions{padding:12px 16px 14px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--line2)}
+#actions .st{font-size:11.5px;color:var(--muted);margin-left:auto}
+#prog{padding:0 16px 10px;display:none}
+#prog.show{display:block}
+#prog .row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:4px}
+#prog .row b{color:var(--text);font-weight:600}
+#prog .bar{height:5px;background:var(--line2);border-radius:3px;overflow:hidden;position:relative}
+#prog .bar i{display:block;height:100%;width:0;background:var(--blue);transition:width .25s}
+#prog.done .bar i{background:var(--green)}
+#prog.warn .bar i{background:var(--orange)}
+#prog.warn .cur{color:var(--orange)}
+#prog.running .bar i::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 10px,rgba(255,255,255,.35) 10px 20px);animation:mv 1s linear infinite}
+@keyframes mv{to{background-position:40px 0}}
+#prog .cur{font-size:11.5px;color:var(--blue);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#prog.done .cur{color:var(--green)}
+/* 右欄 */
+#main{display:flex;flex-direction:column;min-height:0;position:relative}
+#tabs{display:flex;gap:4px;padding:10px 20px 0;border-bottom:1px solid var(--line2);align-items:flex-end}
+.tab{padding:6px 10px 8px;color:var(--muted);cursor:pointer;font-size:13.5px;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:4px 4px 0 0}
+.tab:hover{color:var(--text);background:var(--hover)}
+.tab.on{color:var(--text);font-weight:600;border-bottom-color:var(--text)}
+#tabs .sp{flex:1}
+#tabs .t{font-size:12px;color:var(--muted);padding-bottom:8px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 摘要列：每一類幾筆 */
+#summary{display:none;padding:10px 20px;border-bottom:1px solid var(--line2);font-size:12.5px;color:var(--muted);align-items:center;gap:8px;flex-wrap:wrap}
+#summary.show{display:flex}
+#summary .k{display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 2px;border-radius:5px;cursor:default}
+#summary .k:hover{background:var(--hover)}
+#summary .k .x{color:var(--faint);font-size:11px;cursor:pointer;padding:0 3px;border-radius:3px;visibility:hidden}
+#summary .k:hover .x{visibility:visible}
+#summary .k .x:hover{color:var(--red)}
+#summary .ov{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;min-width:0}
+#summary .ov .pill{background:var(--hover);border-radius:999px;padding:1px 9px;font-size:12px;cursor:pointer}
+#summary .ov .pill:hover{background:var(--line2)}
+#summary .ov .pill.bad{background:#fbe4e4;color:#a32d2d;font-weight:600}
+#summary .ov .pill.on{background:#e1ecf8;color:#1b5fa8}
+.resid{color:#a32d2d;font-weight:600;font-size:12px;margin-left:6px}
+.kept{color:var(--muted);font-size:12px;margin-right:4px}
+#view{flex:1;overflow:auto;padding:22px 28px 40px;min-height:0;user-select:text}
+#view.center{display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:40px}
+#view.center .empty{max-width:420px;font-size:14px;line-height:1.8}
+#view.center .empty b{display:block;font-size:16px;color:var(--text);margin-bottom:6px}
+.doc{line-height:1.9;white-space:pre-wrap;word-break:break-all;font-size:14px;max-width:880px}
+.doc p{margin:0 0 .35em}
+.doc h1,.doc h2,.doc h3{margin:.6em 0 .3em;line-height:1.4}
+.doc h1{font-size:20px}.doc h2{font-size:17px}.doc h3{font-size:15px}
+.doc .box{border-left:3px solid var(--line);padding-left:10px;color:var(--muted);margin:.3em 0}
+.doc table{border-collapse:collapse;margin:.5em 0 .9em;width:auto;max-width:100%;font-size:13.5px}
+.doc td,.doc th{border:1px solid var(--line2);padding:5px 10px;vertical-align:top;white-space:pre-wrap;min-width:60px}
+.doc table.grid td{white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.doc .part{margin:1.2em 0 .6em;border:1px dashed var(--line);border-radius:6px;padding:8px 12px;color:var(--muted);position:relative}
+.doc .part em{position:absolute;top:-9px;left:10px;background:#fff;font-style:normal;font-size:11px;padding:0 4px;color:var(--faint)}
+.doc .tlabel{font-size:12px;color:var(--muted);margin:.8em 0 .2em}
+/* 代號標籤：各類不同的淡色 */
+.code{display:inline-block;padding:0 6px;border-radius:4px;font-weight:600;font-size:12.5px;line-height:1.6;cursor:pointer;background:#e3e2e0;color:#32302c;margin:0 1px;vertical-align:baseline}
+.code:hover{filter:brightness(.94)}
+.code.k-個案{background:#fdecc8;color:#402c1b}.code.k-家屬{background:#fadec9;color:#49290e}.code.k-第三人{background:#e8deee;color:#412454}
+.code.k-身分證{background:#f4dfeb;color:#4c2337}.code.k-電話{background:#dbeddb;color:#1c3829}.code.k-生日{background:#d3e5ef;color:#183347}
+.code.k-地址{background:#eee0da;color:#442a1e}.code.k-其他{background:#e3e2e0;color:#32302c}
+.code.k-電子郵件{background:#e6e3f3;color:#2f2a5c}.code.k-統編{background:#d8ecef;color:#163a40}
+.warn2{color:#b25d0a;font-weight:600;font-size:12px;margin-left:6px}
+.code.nolink{cursor:default}
+.pager{display:flex;gap:8px;align-items:center;margin-bottom:12px;color:var(--muted);font-size:12.5px}
+.img{max-width:100%;border:1px solid var(--line2);border-radius:6px}
+table.ch{border-collapse:collapse;width:100%;font-size:13px;max-width:980px}
+table.ch th{color:var(--muted);font-weight:500;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-size:12px}
+table.ch td{padding:7px 8px;border-bottom:1px solid var(--line2);vertical-align:top}
+table.ch td.v{color:var(--orange)}
+table.ch tr.off td{color:var(--faint);text-decoration:line-through}
+table.ch tr.off td:last-child,table.ch tr.off td:first-child{text-decoration:none}
+.warnbox{border:1px solid rgba(217,115,13,.4);background:#fbf3e8;color:#6b3f0a;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+.notes{color:var(--muted);font-size:12.5px;margin-top:16px;padding-left:18px}
+.notes li{margin-bottom:3px}
+#foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 20px;border-top:1px solid var(--line2);font-size:12px;color:var(--muted);background:#fff}
+#foot .path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46%;cursor:pointer}
+#foot .path:hover{color:var(--text)}
+#foot .sp{flex:1}
+/* 提示放上方，不壓到底部狀態列 */
+#toast{position:fixed;left:calc(300px + (100% - 300px) / 2);bottom:62px;transform:translateX(-50%);background:#37352f;color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;max-width:70%;box-shadow:0 4px 16px rgba(0,0,0,.18);z-index:9}
+#toast.show{opacity:1}
+/* 浮動小框：點代號取消、圈字補遮 */
+#pop{position:absolute;display:none;background:#fff;border:1px solid var(--line2);border-radius:8px;box-shadow:0 6px 24px rgba(15,15,15,.14),0 0 0 1px rgba(15,15,15,.04);padding:10px 12px;font-size:13px;z-index:8;min-width:230px;max-width:360px;user-select:none}
+#pop.show{display:block}
+#pop .q{color:var(--muted);font-size:12px;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pop .q b{color:var(--text);font-weight:500}
+#pop .v{white-space:normal;user-select:text;-webkit-user-select:text}
+#pop .truth{font-weight:600;background:#fff3c4;padding:0 4px;border-radius:3px}
+#pop .dim{color:var(--faint)}
+#pop .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.rep{font-size:13px}
+.rep .bad{color:var(--orange)}
+.rep .good{color:var(--green)}
+</style>
+</head>
+<body>
+<aside id="side">
+  <div id="hd"><span class="mark">潮</span><span class="logo">潮解密</span><span class="sub"><i></i>本機・未連網</span></div>
+  <div class="sec" style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <div class="lbl">檔案<span class="sp"></span><a class="lnk" id="pick">選檔案</a><a class="lnk" id="clear">清空</a></div>
+    <div id="drop">把檔案拖進來<small>docx / xlsx / pdf / png / jpg / txt / md / csv，可以一批</small></div>
+    <div id="files"></div>
+  </div>
+  <div class="sec">
+    <div class="lbl">名單<span class="sp"></span><a class="lnk" id="loadnl">載入名單檔</a></div>
+    <textarea id="nl" rows="9" placeholder="拖檔後會自動抓「姓名：」「聯絡人姓名：」後面的字當候選填在這裡，請核對。&#10;也可以自己打，格式：&#10;[個案]&#10;一行一個名字&#10;[家屬]&#10;一行一個名字"></textarea>
+    <div id="nlinfo"></div>
+    <div class="chips"><span class="chip" id="addskip">補上常用不換</span><span class="chip" id="editskip">編輯常用不換</span></div>
+  </div>
+  <div class="sec">
+    <div class="lbl">代號<span class="sp"></span><a class="lnk" id="importbook" title="載入上次的合併代號簿或任何一張對照表，同一個人沿用同一個代號，新人接著編">匯入上次代號簿</a></div>
+    <label class="ck"><input type="checkbox" id="shared"> 整批共用代號</label>
+    <div id="bookinfo">每個檔各自從 01 編</div>
+  </div>
+  <div id="prog"><div class="row"><span id="progtext"></span><b id="progpct"></b></div><div class="bar"><i id="progfill"></i></div><div class="cur" id="progcur"></div></div>
+  <div id="actions">
+    <button class="primary" id="run">去識別</button>
+    <button id="restore" disabled>還原這個檔</button>
+    <span class="st" id="status"></span>
+  </div>
+</aside>
+<section id="main">
+  <div id="tabs">
+    <span class="tab on" data-t="preview">去識別版</span>
+    <span class="tab" data-t="changes">換了什麼</span>
+    <span class="tab" data-t="ocr">OCR 全文</span>
+    <span class="sp"></span><span class="t" id="title"></span>
+  </div>
+  <div id="summary"></div>
+  <div id="view" class="center"><div class="empty"><b>先把檔案拖進左邊</b>貼上名單，按「去識別」。右邊永遠只顯示去識別版，真名不會出現在畫面上。<br>做完後可以直接在預覽上點代號取消、圈字補遮。</div></div>
+  <div id="foot">
+    <span>對照表</span><span class="path" id="mappath" title="按一下在 Finder 顯示">～/去識別對照表/</span>
+    <span class="sp"></span>
+    <button class="quiet" id="openout" disabled>開去識別版資料夾</button>
+    <button class="quiet" id="openmap">開對照表資料夾</button>
+  </div>
+  <div id="pop"></div>
+</section>
+<div id="toast"></div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let api = null;
+const state = { files: [], sel: null, tab: 'preview', reveal: false, busy: false, skip: "" };
+const NAME_KINDS = ['個案', '家屬', '第三人'];
+const MANUAL_KINDS = ['身分證', '電話', '生日', '地址', '電子郵件', '統編', '其他'];
+function toast(msg, ms = 2800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms); }
+window.onToast = toast;
+const kindOf = code => code.replace(/\d+姓?$/, '');
+// 代號上色：〔個案01〕→ 淡黃標籤，可點
+const hl = s => esc(s).replace(/〔([^〕]{1,12})〕/g, (m, c) => `<span class="code k-${esc(kindOf(c))}" data-code="${esc(c)}">${m}</span>`);
+
+function countsText(f) {
+  if (!f.counts) return '';
+  const parts = Object.entries(f.counts).sort().map(([k, v]) => `${k} ${v}`);
+  return parts.length ? parts.join(' ・ ') : '沒有東西被換';
+}
+function renderFiles() {
+  const box = $('#files'); box.innerHTML = '';
+  for (const f of state.files) {
+    const d = document.createElement('div'); d.className = 'file' + (f.id === state.sel ? ' on' : '');
+    let s = f.status, cls = '';
+    if (f.status === '完成') { s = (f.reversible ? '可還原' : '不可還原'); cls = f.reversible ? '' : 'img'; }
+    if (f.status === '失敗') { cls = 'err'; }
+    if (f.status === '處理中') { cls = 'run'; }
+    const secs = f.seconds != null ? ` ・ ${f.seconds} 秒` : '';
+    const resid = f.residue && f.residue.length ? ` ・ <span class="s err">⚠ 殘留 ${f.residue.length}</span>` : '';
+    d.innerHTML = `<span class="n" title="${esc(f.name)}">${esc(f.name)}</span><span class="x" title="移除">✕</span>` +
+      `<span class="d">${f.status === '完成' ? esc(countsText(f)) + ' ・ ' : ''}<span class="s ${cls}">${esc(s)}</span>${secs}${resid}${f.error ? ' ' + esc(f.error) : ''}</span>`;
+    d.onclick = e => { if (e.target.classList.contains('x')) { removeFile(f.id); } else { select(f.id); } };
+    box.appendChild(d);
+  }
+  $('#status').textContent = state.files.length ? `${state.files.length} 個檔，${state.files.filter(f => f.status === '完成').length} 個完成` : '';
+}
+async function removeFile(id) { await api.remove_file(id); state.files = state.files.filter(f => f.id !== id); if (state.sel === id) { state.sel = null; renderView(); } renderFiles(); }
+window.onFilesAdded = added => { state.files.push(...added); renderFiles(); if (!state.sel && added.length) select(added[0].id); suggestNames(added.map(f => f.id)); };
+function mergeSection(text, section, names) {
+  const lines = text.split('\n'); const has = new Set(lines.map(s => s.trim()));
+  const fresh = names.filter(n => !has.has(n)); if (!fresh.length) return { text, added: 0 };
+  let idx = lines.findIndex(l => l.trim() === '[' + section + ']');
+  if (idx < 0) {
+    // 新區段放在 [不換] 前面，沒有 [不換] 就放最後
+    let skipIdx = lines.findIndex(l => l.trim() === '[不換]');
+    if (skipIdx < 0) { if (lines.length && lines[lines.length - 1].trim() !== '') lines.push(''); lines.push('[' + section + ']', ...fresh); }
+    else { lines.splice(skipIdx, 0, '[' + section + ']', ...fresh, ''); }
+  } else {
+    let end = idx + 1; while (end < lines.length && !/^\[.+\]$/.test(lines[end].trim())) end++;
+    while (end > idx + 1 && lines[end - 1].trim() === '') end--;
+    lines.splice(end, 0, ...fresh);
+  }
+  return { text: lines.join('\n').replace(/^\n+/, ''), added: fresh.length };
+}
+async function suggestNames(ids) {
+  if (!ids.length) return;
+  toast('正在從檔案抓姓名候選…', 2000);
+  const c = await api.name_candidates(ids);
+  const ta = $('#nl'); let t = ta.value; let n = 0;
+  for (const k of NAME_KINDS) { const r = mergeSection(t, k, c[k] || []); t = r.text; n += r.added; }
+  const errNote = c.errors ? `（${c.errors} 個檔讀不出來，那幾個要自己打）` : '';
+  if (n) { ta.value = t; updateNlInfo(); toast(`從檔案抓到 ${n} 個姓名候選，已填進名單，請核對再按去識別${errNote}`, 5000); }
+  else toast(`檔案裡沒抓到「姓名：」這類欄位，姓名請自己打進名單${errNote}`, 4500);
+}
+window.onProgress = p => {
+  const box = $('#prog'); box.className = 'show ' + (p.state === 'done' && p.ok < p.total ? 'warn' : p.state);
+  const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
+  $('#progfill').style.width = pct + '%'; $('#progpct').textContent = pct + '%';
+  if (p.state === 'running') {
+    $('#progtext').textContent = `去識別中 ${p.done} / ${p.total} 個檔 ・ ${p.elapsed} 秒`;
+    $('#progcur').textContent = p.current ? '正在處理：' + p.current : (p.done < p.total ? '準備下一個…' : '');
+  } else {
+    $('#progtext').textContent = `完成 ${p.ok} / ${p.total} 個檔 ・ 共 ${p.elapsed} 秒`;
+    $('#progcur').textContent = p.ok === p.total ? '✓ 全部做完，去識別版已存檔，可以核對右欄' : `⚠ ${p.total - p.ok} 個檔失敗，看左欄紅字`;
+  }
+};
+window.onFileUpdate = f => { const i = state.files.findIndex(x => x.id === f.id); if (i >= 0) state.files[i] = f; renderFiles(); if (f.id === state.sel) { renderView(); } };
+
+function select(id) { state.sel = id; renderFiles(); renderView(); }
+function cur() { return state.files.find(f => f.id === state.sel); }
+
+async function renderView() {
+  hidePop();
+  const f = cur(); const v = $('#view');
+  $('#restore').disabled = !(f && f.status === '完成' && f.reversible);
+  $('#openout').disabled = !(f && f.status === '完成');
+  $('#title').textContent = f ? f.name : '';
+  $('#mappath').textContent = f && f.mapping ? f.mapping.replace(/^\/Users\/[^/]+/, '～') : '～/去識別對照表/';
+  if (!f || f.status !== '完成') {
+    $('#summary').className = '';
+    v.className = 'center';
+    v.innerHTML = f ? `<div class="empty">${f.status === '失敗' ? '這個檔失敗：' + esc(f.error || '') : '還沒去識別，按左下角「去識別」'}</div>`
+      : '<div class="empty"><b>先把檔案拖進左邊</b>貼上名單，按「去識別」。右邊永遠只顯示去識別版，真名不會出現在畫面上。<br>做完後可以直接在預覽上點代號取消、圈字補遮。</div>';
+    return;
+  }
+  v.className = ''; v.innerHTML = '<span style="color:var(--muted)">讀取中…</span>';
+  renderSummary(f);
+  if (state.tab === 'preview') return renderPreview(f, 1);
+  if (state.tab === 'changes') return renderChanges(f);
+  return renderOcr(f);
+}
+// 每一類幾筆，整類可取消；右側顯示已取消／已補遮
+async function renderSummary(f) {
+  const [rows, ov] = await Promise.all([api.changes(f.id, false), api.overrides(f.id)]);
+  const by = {};
+  for (const r of rows) { const k = r.kind; by[k] = by[k] || { codes: 0, n: 0 }; by[k].codes++; by[k].n += r.count; }
+  const s = $('#summary'); s.className = 'show';
+  const ORDER = [...NAME_KINDS, ...MANUAL_KINDS];
+  let h = Object.entries(by).sort((a, b) => (ORDER.indexOf(a[0]) + 1 || 99) - (ORDER.indexOf(b[0]) + 1 || 99)).map(([k, c]) => `<span class="k"><span class="code k-${esc(k)} nolink">${esc(k)}</span>${c.codes} 個 ・ ${c.n} 處<span class="x" title="整類取消" data-kind="${esc(k)}">✕</span></span>`).join('');
+  if (!h) h = '<span>沒有東西被換</span>';
+  const parts = [];
+  if (f.residue && f.residue.length) parts.push(`<span class="pill bad" data-act="showoff" title="去識別版的文字裡還找得到這些真值">⚠ 殘留 ${f.residue.length} 筆</span>`);
+  if (ov.excluded.length) parts.push(`<span class="pill" data-act="showoff">已取消 ${ov.excluded.length} 筆</span>`);
+  if (ov.extra.length) parts.push(`<span class="pill" data-act="showoff">已補遮 ${ov.extra.length} 筆</span>`);
+  // 只有 xlsx 清冊有這顆：部分保留開關（報告書一律全遮，沒有這顆）
+  if (f.can_retain) parts.push(`<span class="pill ${f.retain ? 'on' : ''}" data-act="retain" title="${esc((f.retain ? '目前：' : '按一下開啟：') + f.retain_label + (f.retain ? '。按一下改回全部隱藏' : ''))}">部分保留：${f.retain ? '開' : '關'}</span>`);
+  h += `<span class="ov">${parts.join('')}</span>`;
+  s.innerHTML = h;
+  s.querySelectorAll('.x').forEach(x => x.onclick = async () => { await api.exclude_kind(f.id, x.dataset.kind); toast(`「${x.dataset.kind}」整類取消，重跑中…`); run(); });
+  s.querySelectorAll('.pill[data-act=showoff]').forEach(p => p.onclick = () => switchTab('changes'));
+  const rt = s.querySelector('.pill[data-act=retain]');
+  if (rt) rt.onclick = async () => { const r = await api.set_retain(f.id, !f.retain); if (r.error) { toast(r.error); return; } toast(r.retain ? '部分保留開了，重跑中…' : '改回全部隱藏，重跑中…'); run(); };
+}
+function switchTab(t) { document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === t)); state.tab = t; renderView(); }
+function blockHtml(b) {
+  if (b.t === 'p') { const tag = b.h ? 'h' + Math.min(b.h, 3) : 'p'; return `<${tag} class="${b.box ? 'box' : ''}">${hl(b.text) || '&nbsp;'}</${tag}>`; }
+  if (b.t === 'table') return (b.label ? `<div class="tlabel">${esc(b.label)}</div>` : '') + `<table class="${b.grid ? 'grid' : ''}">` + b.rows.map(r => '<tr>' + r.map(c => `<td>${hl(c)}</td>`).join('') + '</tr>').join('') + '</table>';
+  if (b.t === 'part') return `<div class="part"><em>${esc(b.label)}</em>${b.lines.map(l => `<p>${hl(l)}</p>`).join('')}</div>`;
+  return '';
+}
+async function renderPreview(f, page) {
+  const p = await api.preview(f.id, page); const v = $('#view');
+  if (p.type === 'none') { v.textContent = '沒有可預覽的內容'; return; }
+  let pager = '';
+  if (p.pages > 1) pager = `<div class="pager"><button class="quiet sm" id="pp" ${p.page <= 1 ? 'disabled' : ''}>‹</button><span>${esc(p.label || '')} ${p.page} / ${p.pages}</span><button class="quiet sm" id="pn" ${p.page >= p.pages ? 'disabled' : ''}>›</button></div>`;
+  else if (p.label) pager = `<div class="pager">${esc(p.label)}</div>`;
+  if (p.type === 'image') v.innerHTML = pager + `<img class="img" src="${p.src}" alt="去識別版">`;
+  else if (p.type === 'blocks') v.innerHTML = pager + `<div class="doc">${p.blocks.map(blockHtml).join('')}</div>`;
+  else v.innerHTML = pager + `<div class="doc">${p.lines.map(hl).join('\n')}</div>`;
+  const pp = $('#pp'), pn = $('#pn');
+  if (pp) pp.onclick = () => renderPreview(f, p.page - 1);
+  if (pn) pn.onclick = () => renderPreview(f, p.page + 1);
+}
+async function renderChanges(f) {
+  const [rows, notes, ov] = await Promise.all([api.changes(f.id, state.reveal), api.mapping_notes(f.id, state.reveal), api.overrides(f.id)]); const v = $('#view');
+  let h = `<div class="pager"><span>${rows.length} 個代號，共 ${rows.reduce((a, r) => a + r.count, 0)} 處</span><span style="flex:1"></span><button class="sm" id="reveal">${state.reveal ? '隱藏真值' : '顯示真值（會出現個資）'}</button></div>`;
+  if (state.reveal) h += `<div class="warnbox">真值現在顯示在畫面上。截圖、投影、分享畫面前先按「隱藏真值」。</div>`;
+  const resid = new Set(f.residue || []);
+  if (resid.size) h += `<div class="warnbox">⚠ 去識別版的文字抽回來還找得到 ${resid.size} 筆真值（下面標「殘留」的）。先別交出去：可能是同一個值用了另一種寫法沒被認到，圈起來補遮再跑一次。</div>`;
+  h += `<table class="ch"><tr><th>代號</th><th>類別</th><th>次數</th>${state.reveal ? '<th>真值</th>' : ''}<th>出現位置</th><th></th></tr>` +
+    rows.map(r => `<tr><td>${r.kept ? `<span class="kept">留 ${esc(r.kept)}</span>` : ''}<span class="code k-${esc(r.kind)} nolink">〔${esc(r.code)}〕</span>${resid.has(r.code) ? '<span class="resid">⚠ 殘留</span>' : ''}${r.warn ? `<span class="warn2" title="照樣遮了；可能是原檔打錯字">⚠ ${esc(r.warn)}</span>` : ''}</td><td>${esc(r.kind)}</td><td class="mono">${r.count}</td>${state.reveal ? `<td class="v mono">${esc(r.value)}</td>` : ''}<td class="mono" style="color:var(--muted)">${esc(r.locations.join('、'))}</td><td><button class="quiet sm" data-off="${esc(r.code)}">取消</button></td></tr>`).join('');
+  h += ov.excluded.map(x => `<tr class="off"><td><span class="code k-${esc(x.kind)} nolink">〔${esc(x.label)}〕</span></td><td>${esc(x.kind)}</td><td colspan="${state.reveal ? 3 : 2}" style="color:var(--faint)">已取消，原文留著</td><td><button class="quiet sm" data-back="${esc(x.key)}">加回</button></td></tr>`).join('');
+  h += ov.extra.map(x => `<tr><td><span class="code k-${esc(x.kind)} nolink">補遮</span></td><td>${esc(x.kind)}</td><td colspan="${state.reveal ? 3 : 2}" style="color:var(--muted)">圈選補遮的 ${x.chars} 個字</td><td><button class="quiet sm" data-rm="${esc(x.id)}">移除</button></td></tr>`).join('');
+  h += '</table>';
+  if (notes.length) h += `<ul class="notes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>`;
+  v.innerHTML = h;
+  $('#reveal').onclick = () => { state.reveal = !state.reveal; renderChanges(f); };
+  v.querySelectorAll('[data-off]').forEach(b => b.onclick = () => excludeCode(f, b.dataset.off));
+  v.querySelectorAll('[data-back]').forEach(b => b.onclick = async () => { await api.include_back(f.id, b.dataset.back); toast('加回了，重跑中…'); run(); });
+  v.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { await api.remove_manual(f.id, b.dataset.rm); toast('移除了，重跑中…'); run(); });
+}
+async function renderOcr(f) {
+  const t = await api.ocr_text(f.id); const v = $('#view');
+  if (t == null) { v.className = 'center'; v.innerHTML = '<div class="empty">這個檔不是掃描件或圖片，沒有 OCR 全文。</div>'; return; }
+  v.innerHTML = `<div class="pager">OCR 讀到的每一行（含原文，拿來掃有沒有漏遮）。有底色的是已換成代號的，其他字請自己確認沒有個資。</div><div class="doc">${hl(t)}</div>`;
+}
+async function excludeCode(f, code) {
+  const r = await api.exclude_code(f.id, code);
+  if (r.error) { toast(r.error); return; }
+  toast(`〔${code}〕取消了，這個值整份檔都會留原文；重跑中…`, 3500); run();
+}
+
+/* ---------- 浮動小框 ---------- */
+function showPop(html, x, y) {
+  const pop = $('#pop'); const main = $('#main').getBoundingClientRect();
+  pop.innerHTML = html; pop.className = 'show';
+  let left = x - main.left, top = y - main.top + 8;
+  left = Math.max(8, Math.min(left, main.width - pop.offsetWidth - 8));
+  if (top + pop.offsetHeight > main.height - 8) top = y - main.top - pop.offsetHeight - 8;
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+}
+function hidePop() { $('#pop').className = ''; }
+async function onViewClick(e) {
+  const tag = e.target.closest('.code');
+  if (!tag || tag.classList.contains('nolink')) return;
+  const f = cur(); if (!f) return;
+  const code = tag.dataset.code; const r = tag.getBoundingClientRect();
+  e.stopPropagation();
+  const cv = await api.code_value(f.id, code);  // 點了就看真值；關閉就不見，不留在畫面上
+  const val = cv.value ? `<div class="q v">原文 <b class="truth">${esc(cv.value)}</b>${cv.count > 1 ? `　<span class="dim">這份檔共 ${cv.count} 處</span>` : ''}</div>` : '';
+  showPop(`<div class="q">代號 <b>〔${esc(code)}〕</b>　類別 ${esc(kindOf(code))}</div>${val}<div class="row"><button class="danger sm" id="popoff">取消去識別，留原文</button><button class="quiet sm" id="popx">關閉</button></div>`, r.left, r.bottom);
+  $('#popoff').onclick = () => { hidePop(); excludeCode(f, code); };
+  $('#popx').onclick = hidePop;
+}
+function onViewMouseUp(e) {
+  if (e.target.closest('.code') || e.target.closest('#pop')) return;
+  const sel = window.getSelection(); const text = (sel && sel.toString() || '').trim();
+  if (!text || text.length < 2 || text.length > 60 || /[〔〕\n]/.test(text)) { if (!e.target.closest('#pop')) hidePop(); return; }
+  const f = cur(); if (!f || f.status !== '完成') return;
+  const r = sel.getRangeAt(0).getBoundingClientRect();
+  const opts = [...NAME_KINDS, ...MANUAL_KINDS].map(k => `<option>${k}</option>`).join('');
+  showPop(`<div class="q">補遮 <b>「${esc(text.length > 24 ? text.slice(0, 24) + '…' : text)}」</b></div><div class="row"><select id="popkind">${opts}</select><button class="primary sm" id="popadd">補遮成這一類</button><button class="quiet sm" id="popx">關閉</button></div>`, r.left, r.bottom);
+  $('#popx').onclick = hidePop;
+  $('#popadd').onclick = async () => {
+    const kind = $('#popkind').value; hidePop();
+    if (NAME_KINDS.includes(kind)) {
+      const ta = $('#nl'); const m = mergeSection(ta.value, kind, [text]);
+      ta.value = m.text; await updateNlInfo(); toast(`「${text}」加進名單 [${kind}]，重跑中…`, 3000); run();
+    } else {
+      const res = await api.add_manual(f.id, text, kind);
+      if (res.error) { toast(res.error); return; }
+      toast(res.dup ? '這段字已經補過了' : `補遮成「${kind}」，重跑中…`); if (!res.dup) run();
+    }
+  };
+}
+
+async function run() {
+  if (state.busy) return;
+  if (!state.files.length) { toast('先把檔案拖進來'); return; }
+  state.busy = true; hidePop();
+  const info = await api.set_namelist($('#nl').value);
+  if (info.error) { $('#nlinfo').className = 'err'; $('#nlinfo').textContent = info.error; state.busy = false; return; }
+  if (!info.names) { if (!window._warnedNoNames) { window._warnedNoNames = true; toast('名單是空的：姓名不會被換，只處理身分證、電話、生日、地址', 4000); } }
+  $('#run').disabled = true; $('#run').textContent = '處理中…';
+  try {
+    const r = await api.run_all();
+    toast(`完成 ${r.ok} / ${r.done} 個檔，共 ${r.elapsed} 秒，對照表在 ${r.map_dir.replace(/^\/Users\/[^/]+/, '～')}` + (r.book_path ? `；合併代號簿已存` : ''), 5000);
+    if (r.book) renderBook(r.book);
+  }
+  catch (e) { toast('出錯：' + e); }
+  state.busy = false; $('#run').disabled = false; $('#run').textContent = '去識別';
+}
+function renderBook(i) {
+  $('#shared').checked = !!i.shared;
+  const el = $('#bookinfo');
+  if (!i.shared) { el.textContent = '每個檔各自從 01 編'; el.title = ''; return; }
+  el.textContent = `共用中 ・ 代號簿 ${i.codes} 個代號` + (i.src ? `（匯入自 ${i.src}）` : '') + (i.book_path ? ` ・ 已存 ${i.book_path}` : '');
+  el.title = el.textContent;
+}
+async function restore() {
+  const f = cur(); if (!f) return;
+  const r = await api.restore(f.id); const v = $('#view'); v.className = ''; $('#summary').className = ''; hidePop();
+  if (r.refused) { v.innerHTML = `<div class="warnbox">${esc(r.refused)}</div>`; return; }
+  let h = `<div class="pager">還原結果</div><div class="rep">${r.output ? `<p class="${r.problems ? 'bad' : 'good'}">${r.problems ? '⚠ 有代號被改壞或次數不符，標出來的要自己對' : '✅ 還原完成'}：${esc(r.output)}</p>` : ''}`;
+  if (r.skipped_pages.length) h += `<p class="bad">第 ${r.skipped_pages.join('、')} 頁是掃描遮黑頁，不可還原，請拿原檔。</p>`;
+  if (r.missing && r.missing.length) h += `<p class="bad">⚠ 這幾個代號的真值沒有寫回檔裡：${esc(r.missing.join('、'))}。請按「顯示真值」用對照表手動補。</p>`;
+  h += `<table class="ch"><tr><th>代號</th><th>對照表記的</th><th>檔裡完整出現</th><th>狀況</th></tr>` + r.report.map(x => `<tr><td class="mono">〔${esc(x.code)}〕</td><td class="mono">${x.expected}</td><td class="mono">${x.exact}</td><td class="${x.flag ? 'bad' : ''}">${x.flag ? esc(x.flag) + (x.damaged.length ? '：' + esc(x.damaged.map(d => JSON.stringify(d)).join('、')) : '') : '正常'}</td></tr>`).join('') + '</table></div>';
+  v.innerHTML = h;
+  if (r.output) $('#openout').onclick = () => api.reveal(r.output);
+}
+
+async function updateNlInfo() {
+  const info = await api.set_namelist($('#nl').value);
+  const el = $('#nlinfo');
+  if (info.error) { el.className = 'err'; el.textContent = info.error; return; }
+  el.className = ''; el.textContent = `${info.names} 個姓名，${info.skip} 項不換` + (info.ambiguous ? `，${info.ambiguous} 個姓氏不只一人（那些姓的某先生／某小姐不會換）` : '');
+}
+function addSkip() {
+  const ta = $('#nl'); const lines = state.skip.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!lines.length) { toast('常用不換是空的'); return; }
+  let t = ta.value.trimEnd();
+  if (!/\[不換\]/.test(t)) t += (t ? '\n' : '') + '[不換]';
+  for (const l of lines) if (!t.split('\n').map(s => s.trim()).includes(l)) t += '\n' + l;
+  ta.value = t + '\n'; updateNlInfo();
+}
+async function editSkip() {
+  const cur = state.skip; const ta = $('#nl'); const old = ta.value;
+  ta.value = cur; ta.focus(); $('#nlinfo').className = ''; $('#nlinfo').textContent = '正在編輯常用不換：改完按「儲存常用不換」';
+  const chip = $('#editskip'); chip.textContent = '儲存常用不換';
+  chip.onclick = async () => { state.skip = ta.value; const p = await api.save_skip_defaults(state.skip); ta.value = old; chip.textContent = '編輯常用不換'; chip.onclick = editSkip; toast('常用不換已存：' + p.replace(/^\/Users\/[^/]+/, '～')); updateNlInfo(); };
+}
+
+function wire() {
+  api = window.pywebview.api;
+  $('#pick').onclick = async () => { const a = await api.pick_files(); if (a.length) onFilesAdded(a); };
+  $('#clear').onclick = async () => { await api.clear_files(); state.files = []; state.sel = null; renderFiles(); renderView(); };
+  $('#loadnl').onclick = async () => { const t = await api.load_namelist_file(); if (t != null) { $('#nl').value = t; updateNlInfo(); } };
+  $('#addskip').onclick = addSkip; $('#editskip').onclick = editSkip;
+  $('#shared').onchange = async e => { const i = await api.set_shared(e.target.checked); renderBook(i); toast(i.shared ? '整批共用代號開了，按「去識別」重跑才生效' : '改回每檔各自編號，重跑才生效', 3500); };
+  $('#importbook').onclick = async () => { const i = await api.import_book(); renderBook(i); if (i.error) toast(i.error); else if (i.imported) toast(`載入 ${i.imported} 個代號，整批共用已開，按「去識別」重跑才生效`, 4000); };
+  api.book_info().then(renderBook);
+  $('#run').onclick = run; $('#restore').onclick = restore;
+  $('#openmap').onclick = async () => api.open_folder(await api.map_dir());
+  $('#openout').onclick = () => { const f = cur(); if (f && f.output) api.reveal(f.output); };
+  $('#mappath').onclick = () => { const f = cur(); if (f && f.mapping) api.reveal(f.mapping); };
+  $('#nl').addEventListener('input', () => { clearTimeout(window._nlh); window._nlh = setTimeout(updateNlInfo, 400); });
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.t));
+  const view = $('#view');
+  view.addEventListener('click', onViewClick);
+  view.addEventListener('mouseup', e => setTimeout(() => onViewMouseUp(e), 0));
+  document.addEventListener('mousedown', e => { if (!e.target.closest('#pop') && !e.target.closest('.code')) hidePop(); });
+  const drop = $('#drop');
+  ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  document.addEventListener('dragleave', e => { e.preventDefault(); drop.classList.remove('over'); });
+  document.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('over');
+    // 兩秒內 Python 沒回應就提示，拖放壞掉時才知道壞在哪一段
+    window._dropSeen = false;
+    setTimeout(() => { if (!window._dropSeen) toast('拖放沒有送到程式（網頁有收到、Python 沒回應）；請改按「選檔案」，並告訴我', 6000); }, 2000);
+  });
+  window.onDropSeen = () => { window._dropSeen = true; };
+  api.get_skip_defaults().then(s => { state.skip = s; });
+  api.list_files().then(fs => { state.files = fs; renderFiles(); });
+}
+if (window.pywebview && window.pywebview.api) wire(); else window.addEventListener('pywebviewready', wire);
+</script>
+</body>
+</html>

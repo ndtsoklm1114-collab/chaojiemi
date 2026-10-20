@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+.DS_Store
+# 對照表與代號簿本身就是個資，永遠不進 repo
+*.對照表.json
+合併代號簿_*.json
+*.OCR全文.txt
