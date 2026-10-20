@@ -1,5 +1,5 @@
 """測試用：從檔案裡「姓名／申請人／反映人／聯絡人」欄位後面抓候選姓名，寫成名單檔。
-只寫檔不印出來，讓 Claude 不用看到真名就能跑測試。正式使用時名單由主任自己寫。"""
+只寫檔不印出來，讓 Claude 不用看到真名就能跑測試。正式使用時名單由使用者自己寫。"""
 import re, sys, pathlib
 from pathlib import Path
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))

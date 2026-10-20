@@ -1,4 +1,4 @@
-"""10/16 從鼎淵工具搬的三件：電子郵件、統一編號（要過檢核碼）、身分證檢核碼不符照遮但標警告。全部假資料。"""
+"""參考他人工具補的三件：電子郵件、統一編號（要過檢核碼）、身分證檢核碼不符照遮但標警告。全部假資料。"""
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from deid.core import NameList, Mapper, deidentify_text, is_valid_twid, is_valid_taxid

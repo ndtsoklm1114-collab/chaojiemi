@@ -319,7 +319,7 @@ class Api:
                 "extra": [{"id": x["id"], "kind": x["kind"], "chars": len(x["text"])} for x in e["extra"]]}
 
     def code_value(self, fid: str, code: str) -> dict:
-        """點代號時浮框要看的真值（主任 10/16 定：點了就看，確定要留原文再按取消）。只回這一個代號的值。"""
+        """點代號時浮框要看的真值（點了就看，確定要留原文再按取消）。只回這一個代號的值。"""
         e = self.files.get(fid)
         if not e or not e.get("result"):
             return {}

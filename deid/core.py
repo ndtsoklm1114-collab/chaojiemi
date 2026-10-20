@@ -84,7 +84,7 @@ RE_DATE = re.compile(
     rf"(?<!\d)(?P<y>\d{{2,4}})\s?[/.{DASH}年]\s?(?P<m>0?[1-9]|1[0-2])\s?[/.{DASH}月]\s?(?P<d>0?[1-9]|[12]\d|3[01])日?(?!\d)"
 )
 BIRTH_CUES = re.compile(r"(出生|生日|birth)", re.I)
-# 電子郵件（10/16 從鼎淵工具搬）
+# 電子郵件（參考他人工具的做法）
 RE_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 # 統一編號：八位數字，前後不接數字或連字號；要過檢核碼才算，免得八位數的案號、日期被咬到
 RE_TAXID = re.compile(rf"(?<![\d{DASH}])\d{{8}}(?![\d{DASH}])")
@@ -179,9 +179,9 @@ def _norm_skip(s: str) -> str:
     return re.sub(r"[\s\-()（）－‑]", "", s)
 
 
-# ---------- 部分保留（只給 xlsx 清冊用，主任 10/16 定）----------
+# ---------- 部分保留（只給 xlsx 清冊用）----------
 # 留下來的字適合統計、不容易反推個人：身分證前 2 碼（縣市與性別）、電話前 4 碼（區碼或電信業者）、地址到鄉鎮市區。
-# 姓名與生日一律全遮。幾碼是照林鼎淵工具的預設，主任還沒另定；docx、PDF、掃描件永遠全遮，不走這裡。
+# 姓名與生日一律全遮。幾碼參考他人工具的預設；docx、PDF、掃描件永遠全遮，不走這裡。
 DEFAULT_RETENTION = {"身分證": ("head", 2), "電話": ("digits", 4), "地址": ("district",)}
 RETENTION_LABEL = "身分證前 2 碼・電話前 4 碼・地址到鄉鎮市區"
 RE_DISTRICT_HEAD = re.compile(rf"^(?:[{CJK}]{{2,3}}[縣市])?[{CJK}]{{1,4}}[鄉鎮市區]")
@@ -223,7 +223,7 @@ def find_spans(text: str, namelist: NameList | None) -> list[Span]:
                 # 「陳小姐」只換姓那一個字，稱謂保留；代號是本人代號加「姓」，還原時換回「陳」不是全名
                 spans.append(Span(m.start(), m.start() + 1, kind, alias[0], alias_of=name))
     for m in RE_ID.finditer(text):
-        # 檢核碼不對也照遮（打錯一碼還是個資），只掛警告；鼎淵的工具是不遮，那會漏
+        # 檢核碼不對也照遮（打錯一碼還是個資），只掛警告；有些工具檢核碼不對就不遮，那會漏
         spans.append(Span(m.start(), m.end(), "身分證", m.group(), warn=None if is_valid_twid(m.group()) else "檢核碼不符"))
     for m in RE_EMAIL.finditer(text):
         spans.append(Span(m.start(), m.end(), "電子郵件", m.group()))
